@@ -1,0 +1,273 @@
+import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { 
+  Users, 
+  Mail, 
+  Download, 
+  Trash2, 
+  TrendingUp, 
+  Calendar,
+  Eye,
+  EyeOff,
+  RefreshCw
+} from 'lucide-react';
+import {
+  getSubscriptions,
+  getSubscriptionStats,
+  exportSubscriptions,
+  clearAllSubscriptions,
+  type Subscription,
+  type SubscriptionStats
+} from '../utils/subscriptionService';
+
+const AdminPanel: React.FC = () => {
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>([]);
+  const [stats, setStats] = useState<SubscriptionStats | null>(null);
+  const [isVisible, setIsVisible] = useState(false);
+  const [showEmails, setShowEmails] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
+
+  const loadData = async () => {
+    setIsLoading(true);
+    try {
+      const subs = getSubscriptions();
+      const statistics = getSubscriptionStats();
+      setSubscriptions(subs);
+      setStats(statistics);
+    } catch (error) {
+      console.error('Failed to load subscription data:', error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    loadData();
+  }, []);
+
+  const handleExport = () => {
+    try {
+      const csvData = exportSubscriptions();
+      const blob = new Blob([csvData], { type: 'text/csv' });
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `airwatch-subscriptions-${new Date().toISOString().split('T')[0]}.csv`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Failed to export subscriptions:', error);
+    }
+  };
+
+  const handleClearAll = () => {
+    if (window.confirm('Are you sure you want to clear all subscriptions? This action cannot be undone.')) {
+      const success = clearAllSubscriptions();
+      if (success) {
+        setSubscriptions([]);
+        setStats({
+          totalSubscriptions: 0,
+          activeSubscriptions: 0,
+          subscriptionsToday: 0,
+          subscriptionsThisWeek: 0
+        });
+        alert('All subscriptions cleared successfully.');
+      } else {
+        alert('Failed to clear subscriptions.');
+      }
+    }
+  };
+
+  const formatDate = (timestamp: number) => {
+    return new Date(timestamp).toLocaleString();
+  };
+
+  const maskEmail = (email: string) => {
+    if (showEmails) return email;
+    const [name, domain] = email.split('@');
+    const maskedName = name.length > 2 
+      ? name.substring(0, 2) + '*'.repeat(name.length - 2)
+      : '*'.repeat(name.length);
+    return `${maskedName}@${domain}`;
+  };
+
+  if (!isVisible) {
+    return (
+      <div className="fixed bottom-4 right-4 z-40">
+        <motion.button
+          onClick={() => setIsVisible(true)}
+          className="bg-gray-800 text-white p-3 rounded-full shadow-lg hover:bg-gray-700 transition-colors"
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          title="Admin Panel"
+        >
+          <Users className="h-5 w-5" />
+        </motion.button>
+      </div>
+    );
+  }
+
+  return (
+    <motion.div
+      className="fixed inset-0 z-50 flex items-center justify-center p-4"
+      initial={{ opacity: 0 }}
+      animate={{ opacity: 1 }}
+      style={{ backgroundColor: 'rgba(0, 0, 0, 0.7)' }}
+    >
+      <motion.div
+        className="bg-white rounded-2xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden"
+        initial={{ scale: 0.9, opacity: 0, y: 20 }}
+        animate={{ scale: 1, opacity: 1, y: 0 }}
+      >
+        {/* Header */}
+        <div className="bg-gradient-to-r from-gray-800 to-gray-900 px-6 py-4 text-white">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-3">
+              <Users className="h-6 w-6" />
+              <h2 className="text-xl font-bold">Subscription Admin Panel</h2>
+            </div>
+            <button
+              onClick={() => setIsVisible(false)}
+              className="text-gray-300 hover:text-white transition-colors"
+            >
+              ✕
+            </button>
+          </div>
+        </div>
+
+        {/* Stats Cards */}
+        {stats && (
+          <div className="p-6 bg-gray-50 border-b">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Users className="h-5 w-5 text-blue-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Total</p>
+                    <p className="text-lg font-semibold">{stats.totalSubscriptions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Mail className="h-5 w-5 text-green-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Active</p>
+                    <p className="text-lg font-semibold">{stats.activeSubscriptions}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <Calendar className="h-5 w-5 text-orange-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">Today</p>
+                    <p className="text-lg font-semibold">{stats.subscriptionsToday}</p>
+                  </div>
+                </div>
+              </div>
+              <div className="bg-white p-4 rounded-lg shadow-sm">
+                <div className="flex items-center space-x-2">
+                  <TrendingUp className="h-5 w-5 text-purple-600" />
+                  <div>
+                    <p className="text-sm text-gray-600">This Week</p>
+                    <p className="text-lg font-semibold">{stats.subscriptionsThisWeek}</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* Controls */}
+        <div className="p-6 border-b bg-white">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={loadData}
+                disabled={isLoading}
+                className="flex items-center space-x-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors disabled:opacity-50"
+              >
+                <RefreshCw className={`h-4 w-4 ${isLoading ? 'animate-spin' : ''}`} />
+                <span>Refresh</span>
+              </button>
+              
+              <button
+                onClick={() => setShowEmails(!showEmails)}
+                className="flex items-center space-x-2 px-4 py-2 bg-gray-600 text-white rounded-lg hover:bg-gray-700 transition-colors"
+              >
+                {showEmails ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                <span>{showEmails ? 'Hide' : 'Show'} Emails</span>
+              </button>
+            </div>
+
+            <div className="flex items-center space-x-3">
+              <button
+                onClick={handleExport}
+                className="flex items-center space-x-2 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition-colors"
+              >
+                <Download className="h-4 w-4" />
+                <span>Export CSV</span>
+              </button>
+              
+              <button
+                onClick={handleClearAll}
+                className="flex items-center space-x-2 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" />
+                <span>Clear All</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscriptions List */}
+        <div className="p-6 overflow-y-auto max-h-96">
+          {subscriptions.length === 0 ? (
+            <div className="text-center py-8 text-gray-500">
+              <Mail className="h-12 w-12 mx-auto mb-4 text-gray-300" />
+              <p>No subscriptions found.</p>
+            </div>
+          ) : (
+            <div className="space-y-3">
+              {subscriptions.map((subscription) => (
+                <div
+                  key={subscription.id}
+                  className={`p-4 rounded-lg border ${
+                    subscription.isActive ? 'bg-green-50 border-green-200' : 'bg-gray-50 border-gray-200'
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center space-x-3">
+                        <span className="font-medium">{maskEmail(subscription.email)}</span>
+                        <span className={`px-2 py-1 text-xs rounded-full ${
+                          subscription.isActive 
+                            ? 'bg-green-100 text-green-800' 
+                            : 'bg-gray-100 text-gray-800'
+                        }`}>
+                          {subscription.isActive ? 'Active' : 'Inactive'}
+                        </span>
+                        <span className="px-2 py-1 text-xs bg-blue-100 text-blue-800 rounded-full">
+                          {subscription.source}
+                        </span>
+                      </div>
+                      <div className="mt-1 text-sm text-gray-500">
+                        Subscribed: {formatDate(subscription.subscribedAt)}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      </motion.div>
+    </motion.div>
+  );
+};
+
+export default AdminPanel;
