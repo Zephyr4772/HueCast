@@ -50,7 +50,8 @@ const AQIMap: React.FC = () => {
     }).addTo(map);
 
     // Add AQI layer from WAQI
-    L.tileLayer('https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=239afabe5116cf124feef6d1acb1b098e3d30235', {
+    const waqiToken = import.meta.env.VITE_WAQI_API_TOKEN;
+    L.tileLayer(`https://tiles.aqicn.org/tiles/usepa-aqi/{z}/{x}/{y}.png?token=${waqiToken}`, {
       attribution: 'Air Quality Tiles © World Air Quality Index Project',
       opacity: 0.7
     }).addTo(map);
