@@ -1,15 +1,23 @@
 import axios from 'axios';
 import { AQIData } from '../types/aqi';
 
-// API configuration - in production, this should be set via environment variables
-const API_TOKEN = import.meta.env.VITE_WAQI_API_TOKEN || '239afabe5116cf124feef6d1acb1b098e3d30235';
+// API configuration. The token MUST come from the environment -- never commit one.
+// Get a free token at https://aqicn.org/data-platform/token and put it in .env.local:
+//   VITE_WAQI_API_TOKEN=your_token_here
+const API_TOKEN = import.meta.env.VITE_WAQI_API_TOKEN;
 const BASE_URL = 'https://api.waqi.info';
+
+if (!API_TOKEN) {
+  console.error(
+    'VITE_WAQI_API_TOKEN is not set. Create .env.local with your WAQI token; ' +
+    'see the README. AQI requests will fail until it is set.'
+  );
+}
 
 // Log API configuration (without exposing the token)
 console.log('API Configuration:');
 console.log('- Base URL:', BASE_URL);
 console.log('- Token configured:', API_TOKEN ? 'Yes' : 'No');
-console.log('- Token source:', import.meta.env.VITE_WAQI_API_TOKEN ? 'Environment' : 'Fallback');
 
 // Test API connectivity
 export const testAPIConnectivity = async (): Promise<boolean> => {
